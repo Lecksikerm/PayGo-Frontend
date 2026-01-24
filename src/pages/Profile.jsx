@@ -23,7 +23,7 @@ export default function Profile() {
         const fetchProfile = async () => {
             try {
                 const res = await axios.get(
-                    "https://paygo-bakend.onrender.com/api/profile",
+                    "https://paygo-backend-9srx.onrender.com/api/profile",
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setAvatar(res.data.user.avatar || null);
@@ -51,7 +51,7 @@ export default function Profile() {
         try {
             setLoading(true);
             const res = await axios.post(
-                "https://paygo-bakend.onrender.com/api/profile/avatar",
+                "https://paygo-backend-9srx.onrender.com/api/profile/avatar",
                 formData,
                 {
                     headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
@@ -72,7 +72,7 @@ export default function Profile() {
         try {
             setLoading(true);
             const res = await axios.put(
-                "https://paygo-bakend.onrender.com/api/profile",
+                "https://paygo-backend-9srx.onrender.com/api/profile",
                 data,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -102,7 +102,7 @@ export default function Profile() {
             setLoading(true);
 
             const res = await axios.put(
-                "https://paygo-bakend.onrender.com/api/profile/change-password",
+                "https://paygo-backend-9srx.onrender.com/api/profile/change-password",
                 { currentPassword, newPassword },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -129,7 +129,7 @@ export default function Profile() {
         try {
             setLoading(true);
             const res = await axios.delete(
-                "https://paygo-bakend.onrender.com/api/profile/delete",
+                "https://paygo-backend-9srx.onrender.com/api/profile/delete",
                 {
                     headers: { Authorization: `Bearer ${token}` },
                     data: { password },

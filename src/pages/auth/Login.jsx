@@ -2,10 +2,12 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
+import api from "../../services/api";
 
+
+// Validation schema
 const schema = yup.object().shape({
   email: yup.string().email("Invalid email").required("Email is required"),
   password: yup.string().required("Password is required"),
@@ -27,10 +29,7 @@ export default function Login() {
     try {
       setLoading(true);
 
-      const res = await axios.post(
-        "https://paygo-bakend.onrender.com/api/auth/login",
-        data
-      );
+      const res = await api.post("/auth/login", data);
 
       toast.success(res.data.message);
 
@@ -38,7 +37,7 @@ export default function Login() {
       localStorage.setItem("refreshToken", res.data.refreshToken);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      // Redirect to dashboard
+      
       navigate("/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Login failed");
@@ -75,6 +74,16 @@ export default function Login() {
               className="w-full mt-1 px-4 py-2 border rounded-lg outline-blue-500"
             />
             <p className="text-red-500 text-sm">{errors.password?.message}</p>
+
+            {/* Forgot Password */}
+            <div className="text-right mt-1">
+              <Link
+                to="/forgot-password"
+                className="text-blue-600 text-sm hover:underline"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </div>
 
           <button
@@ -99,3 +108,5 @@ export default function Login() {
     </div>
   );
 }
+
+

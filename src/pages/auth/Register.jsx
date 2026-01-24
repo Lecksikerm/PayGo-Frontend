@@ -33,7 +33,7 @@ export default function Register() {
       setLoading(true);
 
       const res = await axios.post(
-        "https://paygo-bakend.onrender.com/api/auth/register",
+        "https://paygo-backend-9srx.onrender.com/api/auth/register",
         data
       );
 

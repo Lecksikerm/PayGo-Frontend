@@ -29,7 +29,7 @@ export default function VerifyOtp() {
       setLoading(true);
 
       const res = await axios.post(
-        "https://paygo-bakend.onrender.com/api/auth/verify-otp",
+        "https://paygo-backend-9srx.onrender.com/api/auth/verify-otp",
         payload
       );
 
