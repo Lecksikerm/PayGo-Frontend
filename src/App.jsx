@@ -14,6 +14,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Transactions from "./pages/Transactions";
 import TransactionDetails from "./pages/TransactionDetails";
 import More from "./pages/More";
+import VerifyFundingPage from "./pages/VerifyFundingPage";
+
 
 
 
@@ -38,6 +40,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/fund-wallet" element={<FundWallet />} />
+        <Route path="/wallet/verify/:reference" element={<VerifyFundingPage />} />
         <Route path="/set-pin" element={<SetPin />} />
         <Route path="/transfer" element={<TransferFunds />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
