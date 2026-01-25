@@ -1,17 +1,24 @@
 import api from "./axiosInstance.js";
 
+// PIN Management
+export const getPinStatus = () => {
+    return api.get("/wallet/pin/status");
+};
 
-export const setWalletPin = (pin) => {
-    return api.post("/wallet/set-pin", { pin });
+export const setWalletPin = (pin, password) => {
+    return api.post("/wallet/pin/set", { pin, password });
+};
 
+export const changeWalletPin = (newPin, currentPin = null, password = null) => {
+    return api.post("/wallet/pin/change", {
+        newPin,
+        currentPin,
+        password
+    });
 };
 
 export const verifyWalletPin = (pin) => {
-    return api.post("/wallet/verify-pin", { pin });
-};
-
-export const fundWalletManual = (amount, pin) => {
-    return api.post("/wallet/fund/manual", { amount, pin });
+    return api.post("/wallet/pin/verify", { pin });
 };
 
 export const fundWalletPaystack = (amount) => {
