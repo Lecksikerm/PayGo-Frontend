@@ -1,11 +1,10 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../services/api";
-
 
 // Validation schema
 const schema = yup.object().shape({
@@ -16,28 +15,26 @@ const schema = yup.object().shape({
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
-    resolver: yupResolver(schema),
-  });
+  } = useForm({ resolver: yupResolver(schema) });
 
   const onSubmit = async (data) => {
     try {
       setLoading(true);
-
       const res = await api.post("/auth/login", data);
 
       toast.success(res.data.message);
 
+      // Save tokens and user
       localStorage.setItem("accessToken", res.data.token);
       localStorage.setItem("refreshToken", res.data.refreshToken);
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      
       navigate("/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Login failed");
@@ -48,9 +45,9 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow">
+      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
         <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">
-          Login to PayGo
+          Welcome Back
         </h2>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -60,32 +57,41 @@ export default function Login() {
             <input
               type="email"
               {...register("email")}
+              placeholder="Enter your email"
               className="w-full mt-1 px-4 py-2 border rounded-lg outline-blue-500"
             />
             <p className="text-red-500 text-sm">{errors.email?.message}</p>
           </div>
 
           {/* Password */}
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium">Password</label>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               {...register("password")}
+              placeholder="Enter your password"
               className="w-full mt-1 px-4 py-2 border rounded-lg outline-blue-500"
             />
+            <span
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-[38px] cursor-pointer text-gray-600"
+            >
+              {showPassword ? "Hide" : "Show"}
+            </span>
             <p className="text-red-500 text-sm">{errors.password?.message}</p>
-
-            {/* Forgot Password */}
-            <div className="text-right mt-1">
-              <Link
-                to="/forgot-password"
-                className="text-blue-600 text-sm hover:underline"
-              >
-                Forgot Password?
-              </Link>
-            </div>
           </div>
 
+          {/* Forgot Password */}
+          <div className="text-right">
+            <span
+              onClick={() => navigate("/forgot-password")}
+              className="text-blue-600 text-sm hover:underline cursor-pointer"
+            >
+              Forgot Password?
+            </span>
+          </div>
+
+          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -95,6 +101,7 @@ export default function Login() {
           </button>
         </form>
 
+        {/* Signup Link */}
         <p className="text-center text-sm mt-4 text-gray-600">
           Don’t have an account?{" "}
           <span
@@ -108,5 +115,6 @@ export default function Login() {
     </div>
   );
 }
+
 
 

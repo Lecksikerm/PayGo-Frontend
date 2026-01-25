@@ -7,12 +7,12 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user, setUser } = useContext(UserContext);
 
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showBalance, setShowBalance] = useState(true);
 
-  const { user, setUser } = useContext(UserContext);
   const token = localStorage.getItem("accessToken");
 
   useEffect(() => {
@@ -26,16 +26,17 @@ export default function Dashboard() {
         setLoading(true);
         const res = await axios.get(
           "https://paygo-backend-9srx.onrender.com/api/wallet/balance",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-        setBalance(res.data.balance);
+
+        // Fallback in case wallet doesn't exist yet
+        setBalance(res.data.balance ?? 0);
       } catch (err) {
         console.error("Wallet fetch error:", err.response || err.message);
         toast.error(
           err.response?.data?.message || "Failed to fetch wallet balance"
         );
+        setBalance(0);
       } finally {
         setLoading(false);
       }
@@ -59,7 +60,6 @@ export default function Dashboard() {
             alt="avatar"
             className="w-10 h-10 rounded-full object-cover border border-gray-300"
           />
-
           <span className="text-gray-700 font-medium">
             {user ? `${user.firstName} ${user.lastName}` : "Loading..."}
           </span>
@@ -67,8 +67,10 @@ export default function Dashboard() {
           <button
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
             onClick={() => {
+              localStorage.removeItem("accessToken");
+              localStorage.removeItem("refreshToken");
+              localStorage.removeItem("user");
               setUser(null);
-              localStorage.clear();
               navigate("/login");
             }}
           >
@@ -163,5 +165,6 @@ export default function Dashboard() {
     </div>
   );
 }
+
 
 
