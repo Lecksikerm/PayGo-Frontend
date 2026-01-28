@@ -1,5 +1,6 @@
+import React from "react";
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Login from "./pages/auth/Login";
 import Landing from "./pages/Landing";
 import Register from "./pages/auth/Register";
@@ -14,6 +15,8 @@ import Transactions from "./pages/Transactions";
 import TransactionDetails from "./pages/TransactionDetails";
 import More from "./pages/More";
 import VerifyFundingPage from "./pages/VerifyFundingPage";
+import BeneficiariesPage from "./pages/BeneficiariesPage";
+import Notifications from "./pages/Notifications";
 
 export default function App() {
   useEffect(() => {
@@ -38,7 +41,12 @@ export default function App() {
         <Route path="/fund-wallet" element={<FundWallet />} />
         <Route path="/wallet/verify/:reference" element={<VerifyFundingPage />} />
         <Route path="/set-pin" element={<SetPin />} />
+
+        {/* Transfer with integrated beneficiaries */}
         <Route path="/transfer" element={<TransferFunds />} />
+
+        {/* Dedicated beneficiaries management page */}
+        <Route path="/beneficiaries" element={<BeneficiariesPage />} />
 
         {/* Password Recovery */}
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -47,6 +55,9 @@ export default function App() {
         {/* Transactions */}
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/transactions/:id" element={<TransactionDetails />} />
+
+        {/* Notifications */}
+        <Route path="/notifications" element={<Notifications />} />
 
         {/* More */}
         <Route path="/more" element={<More />} />

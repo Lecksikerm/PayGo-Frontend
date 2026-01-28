@@ -28,13 +28,19 @@ export default function Login() {
       setLoading(true);
       const res = await api.post("/auth/login", data);
 
-      toast.success(res.data.message);
-
-      // Save tokens and user
-      localStorage.setItem("accessToken", res.data.token);
+      const token = res.data.token;
+      localStorage.setItem("accessToken", token);
       localStorage.setItem("refreshToken", res.data.refreshToken);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
 
+      // IMPORTANT: Fetch full profile to get avatar immediately
+      const profileRes = await api.get("/profile", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const fullUser = profileRes.data.user;
+      localStorage.setItem("user", JSON.stringify(fullUser));
+
+      toast.success(res.data.message);
       navigate("/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.message || "Login failed");
