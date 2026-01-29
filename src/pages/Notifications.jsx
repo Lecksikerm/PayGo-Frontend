@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import { useNavigate } from "react-router-dom";
-import { FaCheck, FaTrash, FaBell, FaArrowLeft, FaInfoCircle } from "react-icons/fa"; // ✅ Added FaInfoCircle
+import { FaCheck, FaTrash, FaBell, FaArrowLeft, FaInfoCircle } from "react-icons/fa"; 
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Notifications() {

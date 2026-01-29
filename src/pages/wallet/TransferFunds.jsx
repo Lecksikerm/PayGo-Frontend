@@ -94,16 +94,18 @@ export default function TransferFunds() {
 
         try {
             const res = await transferFunds(recipientEmail, Number(amount), pin);
+
             toast.success(res.data.message);
 
-            // Clear form
-            setRecipientEmail("");
-            setAmount("");
-            setPin("");
-            setRecipientInfo(null);
-            setVerified(false);
+            navigate("/transfer/success", {
+                state: {
+                    transaction: res.data.transaction,
+                    newBalance: res.data.newBalance
+                }
+            });
 
             setTimeout(() => refetch(), 1000);
+
         } catch (err) {
             toast.error(err.response?.data?.message || "Transfer failed");
         } finally {
@@ -120,7 +122,7 @@ export default function TransferFunds() {
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => navigate("/dashboard")} // ✅ Navigate to dashboard
+                        onClick={() => navigate("/dashboard")}
                         className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-white/10 transition-colors text-white hover:text-purple-200"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,8 +202,8 @@ export default function TransferFunds() {
                                             type="email"
                                             placeholder="recipient@example.com"
                                             className={`w-full p-4 rounded-lg bg-white/10 border transition-all ${verified ? 'border-green-500/50 bg-green-500/10' :
-                                                    verificationError ? 'border-red-500/50 bg-red-500/10' :
-                                                        'border-white/30 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50'
+                                                verificationError ? 'border-red-500/50 bg-red-500/10' :
+                                                    'border-white/30 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50'
                                                 } text-white placeholder-purple-300`}
                                             value={recipientEmail}
                                             onChange={handleEmailChange}
@@ -214,8 +216,8 @@ export default function TransferFunds() {
                                         onClick={verifyRecipient}
                                         disabled={verifying || !recipientEmail || loading}
                                         className={`px-6 py-4 rounded-lg font-medium text-sm border transition-all ${verified
-                                                ? 'bg-green-500/20 text-green-300 border-green-500/50'
-                                                : 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30'
+                                            ? 'bg-green-500/20 text-green-300 border-green-500/50'
+                                            : 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30'
                                             }`}
                                     >
                                         {verifying ? (

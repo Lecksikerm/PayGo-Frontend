@@ -2,3 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/* SAFE RESET - Allows natural scrolling */
+@layer base {
+    * {
+        box-sizing: border-box;
+    }
+
+    html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+        /* NO overflow properties here! */
+    }
+
+    body {
+        @apply antialiased bg-slate-50 text-gray-900;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        /* NO overflow-x or overflow-y here! */
+        min-height: 100vh;
+    }
+
+    #root {
+        width: 100%;
+        min-height: 100vh;
+        /* NO overflow hidden! */
+    }
+
+    /* Prevent images from breaking layout naturally */
+    img,
+    video,
+    svg {
+        max-width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    /* Text wrapping without overflow */
+    p,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    span,
+    div {
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* Mobile zoom prevention ONLY */
+    @media (max-width: 768px) {
+
+        input,
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+    }
+}

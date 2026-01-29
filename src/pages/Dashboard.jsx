@@ -1,15 +1,15 @@
-import { useEffect, useState, useContext, useMemo, useCallback } from "react";
+import { useEffect, useState, useContext, useCallback } from "react";
 import { UserContext } from "../context/UserContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FaEye, FaEyeSlash, FaBell, FaWallet, FaMoneyBillWave,
-  FaUserFriends, FaUserCircle, FaChartLine, FaClock,
-  FaArrowUp, FaArrowDown, FaPlus, FaSignOutAlt,
+  FaEye, FaEyeSlash, FaBell, FaWallet,
+  FaUserFriends, FaChartLine,
+  FaArrowUp, FaArrowDown, FaPlus,
   FaHome, FaExchangeAlt, FaHistory, FaCog, FaLock,
-  FaArrowRight, FaUser, FaArrowUp as FaArrowUpAlt
+  FaArrowRight, FaUser, FaPaperPlane
 } from "react-icons/fa";
 import { setWalletPin, getPinStatus, changeWalletPin } from "../api/wallet.js";
 
@@ -19,12 +19,19 @@ export default function Dashboard() {
 
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showBalance, setShowBalance] = useState(true);
+
+  // Persist showBalance to localStorage
+  const [showBalance, setShowBalance] = useState(() => {
+    const saved = localStorage.getItem("paygo_showBalance");
+    return saved ? JSON.parse(saved) : true;
+  });
+
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [recentActivity, setRecentActivity] = useState([]);
-  const [transactionCount, setTransactionCount] = useState(5);
-  const [beneficiaryCount, setBeneficiaryCount] = useState(12);
+  const [transactionCount, setTransactionCount] = useState(0);
+  const [beneficiaryCount] = useState(12);
+  const [userLoading, setUserLoading] = useState(true);
 
   // PIN Modal States
   const [showPinModal, setShowPinModal] = useState(false);
@@ -38,11 +45,46 @@ export default function Dashboard() {
 
   const token = localStorage.getItem("accessToken");
 
+  // Save showBalance to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("paygo_showBalance", JSON.stringify(showBalance));
+  }, [showBalance]);
+
   // Update Time
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Fetch complete user profile (with avatar) on mount if missing
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!token) return;
+
+      if (!user?.avatar || !user?.firstName) {
+        try {
+          setUserLoading(true);
+          const res = await axios.get(
+            "https://paygo-backend-9srx.onrender.com/api/profile",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          if (res.data.user) {
+            setUser(res.data.user);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+          }
+        } catch (err) {
+          console.error("Failed to fetch user profile:", err);
+        } finally {
+          setUserLoading(false);
+        }
+      } else {
+        setUserLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [token, setUser, user?.avatar, user?.firstName]);
 
   // Check PIN Status
   useEffect(() => {
@@ -54,8 +96,8 @@ export default function Dashboard() {
         console.error("Failed to check PIN status:", err);
       }
     };
-    checkPinStatus();
-  }, []);
+    if (token) checkPinStatus();
+  }, [token]);
 
   // Fetch Dashboard Data
   useEffect(() => {
@@ -68,27 +110,25 @@ export default function Dashboard() {
       try {
         setLoading(true);
 
-        const walletRes = await axios.get(
-          "https://paygo-backend-9srx.onrender.com/api/wallet/balance",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const [walletRes, notifRes, transactionsRes] = await Promise.all([
+          axios.get("https://paygo-backend-9srx.onrender.com/api/wallet/balance", {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          axios.get("https://paygo-backend-9srx.onrender.com/api/notifications?unreadOnly=true&limit=1", {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          axios.get("https://paygo-backend-9srx.onrender.com/api/wallet/transactions?limit=5", {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+
         setBalance(walletRes.data.balance ?? 0);
-
-        const notifRes = await axios.get(
-          "https://paygo-backend-9srx.onrender.com/api/notifications?unreadOnly=true&limit=1",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
         setUnreadCount(notifRes.data.unreadCount || 0);
-
-        const transactionsRes = await axios.get(
-          "https://paygo-backend-9srx.onrender.com/api/wallet/transactions?limit=5",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
         setRecentActivity(transactionsRes.data.transactions || []);
         setTransactionCount(transactionsRes.data.transactions?.length || 0);
-
       } catch (err) {
-        toast.error("Failed to load some data");
+        toast.error("Failed to load dashboard data");
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -122,6 +162,7 @@ export default function Dashboard() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
+    localStorage.removeItem("paygo_showBalance");
     setUser(null);
     toast.success("Logged out successfully!");
     navigate("/login");
@@ -135,17 +176,16 @@ export default function Dashboard() {
 
     setPinLoading(true);
     try {
-      const res =
-        pinMode === "set"
-          ? await setWalletPin(pin, password)
-          : await changeWalletPin(pin, currentPin || null, !currentPin ? password : null);
+      const res = pinMode === "set"
+        ? await setWalletPin(pin, password)
+        : await changeWalletPin(pin, currentPin || null, !currentPin ? password : null);
 
       toast.success(res.data.message);
       setHasPin(true);
       setShowPinModal(false);
       resetPinForm();
-    } catch {
-      toast.error("PIN operation failed");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "PIN operation failed");
     } finally {
       setPinLoading(false);
     }
@@ -208,11 +248,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      {/* PIN MODAL - Fixed blinking by placing directly in render with AnimatePresence */}
-      <AnimatePresence mode="wait">
+      {/* PIN Modal */}
+      <AnimatePresence>
         {showPinModal && (
           <motion.div
-            key="pin-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -223,15 +262,14 @@ export default function Dashboard() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-3 bg-blue-100 rounded-full">
                   <FaLock className="text-blue-600 text-xl" />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800">
+                <h3 className="text-xl font-bold text-gray-800">
                   {pinMode === "set" ? "Set Wallet PIN" : "Change Wallet PIN"}
                 </h3>
               </div>
@@ -307,12 +345,8 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* HEADER */}
-      <motion.header
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-white px-6 py-4 shadow-sm sticky top-0 z-40"
-      >
+      {/* Header */}
+      <header className="bg-white px-4 sm:px-6 py-4 shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div
             className="flex items-center gap-2 cursor-pointer"
@@ -332,9 +366,7 @@ export default function Dashboard() {
               <p className="text-xs text-gray-500">{formatDate()}</p>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={() => navigate("/notifications")}
               className="relative p-2.5 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors"
             >
@@ -344,58 +376,53 @@ export default function Dashboard() {
                   {unreadCount}
                 </span>
               )}
-            </motion.button>
+            </button>
 
             <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-gray-800">{user?.firstName || "User"}</p>
+                <p className="text-sm font-semibold text-gray-800">
+                  {userLoading ? "Loading..." : (user?.firstName || "User")}
+                </p>
                 <p className="text-xs text-green-500">Verified</p>
               </div>
               <div className="relative">
                 <img
                   src={user?.avatar || "https://www.gravatar.com/avatar?d=mp"}
                   alt="Profile"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-100"
+                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-100 bg-gray-200"
+                  onError={(e) => {
+                    e.target.src = "https://www.gravatar.com/avatar?d=mp";
+                  }}
                 />
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
               </div>
               <button
                 onClick={handleLogout}
-                className="ml-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 transition-colors"
+                className="ml-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold hover:bg-red-100 transition-colors hidden sm:block"
               >
                 Logout
               </button>
             </div>
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      <main className="max-w-7xl mx-auto px-6 pt-6 space-y-6">
-        {/* WELCOME SECTION */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex justify-between items-end"
-        >
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+        {/* Welcome Section */}
+        <div className="flex justify-between items-end">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">
-              Welcome back, {user?.firstName || "Kareem"}! 👋
+              Welcome back, {user?.firstName || " there"}! 👋
             </h1>
             <p className="text-gray-500 mt-1">Here's what's happening with your wallet today</p>
           </div>
           <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
             View Report
           </button>
-        </motion.div>
+        </div>
 
-        {/* STATS ROW */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <StatCard
             icon={<FaChartLine className="text-emerald-600" />}
             label="Total Balance"
@@ -407,7 +434,7 @@ export default function Dashboard() {
             icon={<FaExchangeAlt className="text-blue-600" />}
             label="Transactions"
             value={transactionCount.toString()}
-            subtext="Today"
+            subtext="Recent"
             trend="neutral"
           />
           <StatCard
@@ -417,17 +444,11 @@ export default function Dashboard() {
             subtext="Active"
             trend="neutral"
           />
-        </motion.div>
+        </div>
 
-        {/* MAIN BALANCE CARD */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 p-8 text-white shadow-xl"
-        >
+        {/* Main Balance Card */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 p-8 text-white shadow-xl">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-10 -mb-10 blur-2xl"></div>
 
           <div className="relative z-10 flex justify-between items-start mb-8">
             <div>
@@ -445,39 +466,26 @@ export default function Dashboard() {
                 <FaArrowUp className="text-green-300" /> +₦5,230 today
               </p>
             </div>
-            <div className="hidden sm:block">
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <FaWallet className="text-2xl" />
-              </div>
-            </div>
           </div>
 
           <div className="relative z-10 flex gap-3">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={() => navigate("/fund-wallet")}
               className="flex-1 sm:flex-none px-6 py-3 bg-white text-blue-600 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-blue-50 transition-colors shadow-lg"
             >
               <FaPlus /> Add Funds
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            </button>
+            <button
               onClick={() => navigate("/transfer")}
               className="flex-1 sm:flex-none px-6 py-3 bg-white/20 text-white rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-white/30 transition-colors backdrop-blur-sm border border-white/30"
             >
-              <FaArrowUpAlt className="rotate-45" /> Send Money
-            </motion.button>
+              <FaPaperPlane /> Send Money
+            </button>
           </div>
-        </motion.div>
+        </div>
 
-        {/* QUICK ACTIONS GRID */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
+        {/* Quick Actions Grid */}
+        <div>
           <h3 className="text-lg font-bold text-gray-800 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {quickActions.map((action, index) => (
@@ -485,8 +493,8 @@ export default function Dashboard() {
                 key={action.label}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4 + index * 0.1 }}
-                whileHover={{ scale: 1.02, y: -2 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={action.onClick}
                 className={`p-5 rounded-2xl bg-gradient-to-br ${action.color} text-white shadow-lg hover:shadow-xl transition-all text-left relative overflow-hidden group`}
@@ -502,99 +510,64 @@ export default function Dashboard() {
               </motion.button>
             ))}
           </div>
-        </motion.div>
+        </div>
 
-        {/* RECENT ACTIVITY - Only visible when balance is shown */}
-        <AnimatePresence mode="wait">
-          {showBalance && (
-            <motion.div
-              key="recent-activity"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-            >
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-gray-800">Recent Activity</h3>
-                <button
-                  onClick={() => navigate("/transactions")}
-                  className="text-blue-600 text-sm font-semibold hover:underline flex items-center gap-1"
-                >
-                  View All <FaArrowRight className="text-xs" />
-                </button>
+        {/* Recent Activity */}
+        {showBalance && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-800">Recent Activity</h3>
+              <button
+                onClick={() => navigate("/transactions")}
+                className="text-blue-600 text-sm font-semibold hover:underline flex items-center gap-1"
+              >
+                View All <FaArrowRight className="text-xs" />
+              </button>
+            </div>
+
+            {recentActivity.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <FaHistory className="mx-auto text-3xl mb-3 text-gray-300" />
+                <p>No recent transactions</p>
               </div>
-
-              {recentActivity.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <FaHistory className="mx-auto text-3xl mb-3 text-gray-300" />
-                  <p>No recent transactions</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {recentActivity.map((t, index) => (
-                    <motion.div
-                      key={t._id || index}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => navigate("/transactions")}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'credit' || t.amount > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                          }`}>
-                          {t.type === 'credit' || t.amount > 0 ? <FaArrowDown /> : <FaArrowUp />}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-800 capitalize">{t.type || "Transaction"}</p>
-                          <p className="text-xs text-gray-500">{t.date || new Date().toLocaleDateString()}</p>
-                        </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {recentActivity.map((t, index) => (
+                  <div
+                    key={t._id || index}
+                    className="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => navigate("/transactions")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${t.type === 'credit' || t.amount > 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                        }`}>
+                        {t.type === 'credit' || t.amount > 0 ? <FaArrowDown /> : <FaArrowUp />}
                       </div>
-                      <p className={`font-bold ${t.amount < 0 ? "text-red-600" : "text-green-600"}`}>
-                        {t.amount < 0 ? "-" : "+"}{formatHiddenAmount(Math.abs(t.amount))}
-                      </p>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                      <div>
+                        <p className="font-semibold text-gray-800 capitalize">{t.type || "Transfer"}</p>
+                        <p className="text-xs text-gray-500">{new Date(t.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <p className={`font-bold ${t.amount < 0 ? "text-red-600" : "text-green-600"}`}>
+                      {t.amount < 0 ? "-" : "+"}{formatHiddenAmount(Math.abs(t.amount))}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
-      {/* BOTTOM NAVIGATION */}
+      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-around py-3">
-            <BottomButton
-              icon={<FaHome />}
-              label="Home"
-              active={true}
-              onClick={() => navigate("/")}
-            />
-            <BottomButton
-              icon={<FaExchangeAlt />}
-              label="Transfer"
-              onClick={() => navigate("/transfer")}
-            />
-            <BottomButton
-              icon={<FaLock />}
-              label={hasPin ? "Change PIN" : "Set PIN"}
-              onClick={() => {
-                setPinMode(hasPin ? "change" : "set");
-                setShowPinModal(true);
-              }}
-            />
-            <BottomButton
-              icon={<FaCog />}
-              label="Settings"
-              onClick={() => {
-                // Check if settings page exists, if not show toast
-                toast.info("Settings page coming soon!");
-                // Or navigate: navigate("/settings");
-              }}
-            />
+            <BottomButton icon={<FaHome />} label="Home" active={true} onClick={() => navigate("/")} />
+            <BottomButton icon={<FaExchangeAlt />} label="Transfer" onClick={() => navigate("/transfer")} />
+            <BottomButton icon={<FaLock />} label="PIN" onClick={() => { setPinMode(hasPin ? "change" : "set"); setShowPinModal(true); }} />
+            <BottomButton icon={<FaUser />} label="Profile" onClick={() => navigate("/profile")} />
+            <BottomButton icon={<FaCog />} label="More" onClick={() => navigate("/more")} />
           </div>
         </div>
       </div>
@@ -602,7 +575,7 @@ export default function Dashboard() {
   );
 }
 
-/* REUSABLE COMPONENTS */
+/* Components */
 function StatCard({ icon, label, value, subtext, trend }) {
   return (
     <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between hover:shadow-md transition-shadow">
@@ -624,9 +597,7 @@ function BottomButton({ icon, label, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${active
-          ? 'text-blue-600 bg-blue-50'
-          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+      className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${active ? 'text-blue-600 bg-blue-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
         }`}
     >
       <span className="text-xl">{icon}</span>

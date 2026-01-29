@@ -17,6 +17,8 @@ import More from "./pages/More";
 import VerifyFundingPage from "./pages/VerifyFundingPage";
 import BeneficiariesPage from "./pages/BeneficiariesPage";
 import Notifications from "./pages/Notifications";
+import TransferSuccess from "./pages/transfer/TransferSuccess";
+import ReceiptView from "./pages/transfer/ReceiptView";
 
 export default function App() {
   useEffect(() => {
@@ -58,6 +60,12 @@ export default function App() {
 
         {/* Notifications */}
         <Route path="/notifications" element={<Notifications />} />
+
+        {/* Transfer Success */}
+        <Route path="/transfer/success" element={<TransferSuccess />} />
+
+        {/* Receipt View */}
+        <Route path="/receipt/view" element={<ReceiptView />} />
 
         {/* More */}
         <Route path="/more" element={<More />} />
